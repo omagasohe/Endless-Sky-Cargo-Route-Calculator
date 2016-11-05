@@ -37,9 +37,11 @@ public class View extends JFrame implements WindowListener,ActionListener {
 	static List<String> listGov = new ArrayList<String>();
 	private List<JCheckBox> listGovCheckBox = new ArrayList<JCheckBox>();
 	private TableRowSorter<MainTableModel> mainTableSorter;
+	private TableRowSorter<SupplyTableModel> supplyTableSorter;
 	
 	public View()
 	{
+		LoadPlayerFile();
 		int winX = 960;
 		int winY = 720;
 		Dimension dimWindow = new Dimension(winX,winY);
@@ -60,6 +62,14 @@ public class View extends JFrame implements WindowListener,ActionListener {
 		mainTable.setFillsViewportHeight(true);
 		//mainTable.setAutoCreateRowSorter(true);
 		mainTable.setRowSorter(mainTableSorter);
+		JTable supplyTable = new JTable(new SupplyTableModel(null));
+		supplyTableSorter = new TableRowSorter<SupplyTableModel>((SupplyTableModel) supplyTable.getModel());
+		
+		supplyTable.setPreferredScrollableViewportSize(dimWindow);
+		supplyTable.setFillsViewportHeight(true);
+		//mainTable.setAutoCreateRowSorter(true);
+		supplyTable.setRowSorter(mainTableSorter);
+
 		JPanel pnlGovCheckBox = new JPanel();
 		pnlGovCheckBox.setLayout(new GridLayout(4,0));
 		for(int i = 0; i < listGov.size(); i++)
@@ -76,12 +86,14 @@ public class View extends JFrame implements WindowListener,ActionListener {
 		        "All Entries, filtered by Governments tab");
 		tabbedPane.addTab("Governments", null, new JScrollPane(pnlGovCheckBox),
 		        "All Entries, filtered by Governments tab");
+		tabbedPane.addTab("Supply", null, new JScrollPane(supplyTable),
+		        "All Entries, filtered by Governments tab");
 		
 		setVisible(true);
 	}
 	
-	
-	public static void main(String[] args) {
+	public static void LoadMapFile()
+	{
 		try {
 			File dir = new File(".");
 			File fin = new File(dir.getCanonicalPath() + File.separator + "map.txt");
@@ -125,7 +137,7 @@ public class View extends JFrame implements WindowListener,ActionListener {
 
 					if(!listGov.contains(gov))
 						listGov.add(gov);
-				    CurrentSystem.Government = listGov.indexOf(gov);
+				    CurrentSystem.setGovernment(listGov.indexOf(gov));
 
 				}
 				else if(line.startsWith("system "))
@@ -148,33 +160,112 @@ public class View extends JFrame implements WindowListener,ActionListener {
 		int top = listSystem.size();
 		for(int i = 0; i < top;i++)
 		{
-			if(listSystem.get(i).Government == unhab)
+			if(listSystem.get(i).getGovernment() == unhab)
 			{
 				listSystem.remove(i);
 				i--;
 				top--;
 			}
 		}
-		
-		for(StarSystem s:listSystem)
-		{
-			System.out.printf("%-20s %-20s", s.Name, s.Government);
-			for(int i =0; i < StarSystem.CommoditiesList.length; i++)					
-				System.out.printf(" %8d",s.Costs[i]);
-			System.out.println("");
+	}
+	public static void LoadPlayerFile()
+	{
+		try {
+			File dir = new File(".");
+			File fin = new File(dir.getCanonicalPath() + File.separator + "savefile.txt");
+			Boolean SysFound;
+			FileInputStream fis = new FileInputStream(fin);
+			// Construct BufferedReader from InputStreamReader
+			BufferedReader br = new BufferedReader(new InputStreamReader(fis));
+			String line = null;
+			boolean economy = false;
+			int[] econTrans = new int[StarSystem.CommoditiesList.length];
+			while ((line = br.readLine()) != null) {
+			 
+				if(line.startsWith("visited"))
+				{
+					economy = false;
+					StarSystem mySystem=null;
+					line.trim();
+					List<String> list = new ArrayList<String>();
+					Matcher m = Pattern.compile("([^\"]\\S*|\".+?\")\\s*").matcher(line);
+
+					while (m.find())
+					    list.add(m.group(1).replace("\"", "")); // Add .replace("\"", "") to remove surrounding quotes.
+					
+					String sysName = list.get(1);
+					for(StarSystem s:View.listSystem)
+						if(s.getName().equals(sysName))
+							s.setVisited(true);
+				}
+				else if(line.startsWith("economy"))
+				{
+					economy = true;
+				}
+				else if(!line.startsWith("\t"))
+				{
+					economy = false;
+				}
+				else if(economy)
+				{
+
+					StarSystem mySystem=null;
+					List<String> list = new ArrayList<String>();
+					Matcher m = Pattern.compile("([^\"]\\S*|\".+?\")\\s*").matcher(line.trim());
+
+					while (m.find())
+					    list.add(m.group(1).replace("\"", "")); // Add .replace("\"", "") to remove surrounding quotes.
+					
+					System.out.printf("economy %s\n",list.get(0).trim());
+					if(line.startsWith("\tsystem"))
+					{
+						
+						for(int i = 1; i < list.size(); i++)
+						{
+							for(int j = 0; j < StarSystem.CommoditiesList.length;j++)
+							{
+								if(StarSystem.CommoditiesList[j].equalsIgnoreCase(list.get(i)))
+										econTrans[i-1] = j;
+							}
+						}
+					}
+					else
+					{
+						System.out.printf("Cost %s\n",list);
+						String sysName = list.get(0).trim().replace("\"", "");
+						for(StarSystem s :View.listSystem)
+							if(s.getName().equals(sysName))
+							{
+								for(int i = 1; i < list.size(); i++)
+								{
+									s.setSupply(econTrans[i-1],Integer.parseInt(list.get(i)));
+								}
+							}
+					}
+					
+				}
+			}
+
+			br.close();
+
+		} catch (IOException e) {
+
+			e.printStackTrace();
+			System.out.println(e.getMessage());
+			System.exit(0);
 		}
-		System.out.printf("Total systems: %d",listSystem.size());
-		
-		for(String s:listGov)
-			System.out.println(s);
-		System.out.println(listGov.size());
-		
-		
-		
-		
+	}
+
+
+	public static void main(String[] args) {
+		LoadMapFile();
 		new View();
 	}
-	
+	@Override public void actionPerformed(ActionEvent arg0) 
+	{	
+	}
+		
+		
 	class MainTableModel extends AbstractTableModel {
 		
 
@@ -187,7 +278,7 @@ public class View extends JFrame implements WindowListener,ActionListener {
 		}
 
         public int getColumnCount() {
-            return StarSystem.CommoditiesList.length+2;
+            return StarSystem.CommoditiesList.length+3;
         }
  
         public int getRowCount() {
@@ -199,7 +290,8 @@ public class View extends JFrame implements WindowListener,ActionListener {
             {
 	            case 0: return "Name";
 	            case 1: return "Government";
-	            default:return StarSystem.CommoditiesList[col-2];
+	            case 2: return "Visited";
+	            default:return StarSystem.CommoditiesList[col-3];
             }
         }
  
@@ -207,9 +299,10 @@ public class View extends JFrame implements WindowListener,ActionListener {
 
             switch(col)
             {
-	            case 0: return View.listSystem.get(row).Name;
-	            case 1: return View.listGov.get(View.listSystem.get(row).Government);
-	            default:return View.listSystem.get(row).Costs[col-2];
+	            case 0: return View.listSystem.get(row).getName();
+	            case 1: return View.listGov.get(View.listSystem.get(row).getGovernment());
+	            case 2: return View.listSystem.get(row).wasVisited();
+	            default:return View.listSystem.get(row).getCost(col-3);
             }
 
         }
@@ -219,11 +312,50 @@ public class View extends JFrame implements WindowListener,ActionListener {
             return getValueAt(0, c).getClass();
         }
 	}
-	@Override
-	public void actionPerformed(ActionEvent arg0) {
-		// TODO Auto-generated method stub
+	class SupplyTableModel extends AbstractTableModel {
 		
+
+		List<JCheckBox> boxes;
+		
+		public SupplyTableModel(List<JCheckBox> boxes)
+		{
+
+			this.boxes = boxes;
+		}
+
+        public int getColumnCount() {
+            return StarSystem.CommoditiesList.length+1;
+        }
+ 
+        public int getRowCount() {
+            return View.listSystem.size();
+        }
+ 
+        public String getColumnName(int col) {
+            switch(col)
+            {
+	            case 0: return "Name";
+
+	            default:return StarSystem.CommoditiesList[col-1];
+            }
+        }
+ 
+        public Object getValueAt(int row, int col) {
+
+            switch(col)
+            {
+	            case 0: return View.listSystem.get(row).getName();
+	            default:return View.listSystem.get(row).getSupply(col-1);
+            }
+
+        }
+ 
+        @SuppressWarnings({ "unchecked", "rawtypes" })
+		public Class getColumnClass(int c) {
+            return getValueAt(0, c).getClass();
+        }
 	}
+
 
 
 	@Override public void windowClosing(WindowEvent ev)     { System.exit(0);}
