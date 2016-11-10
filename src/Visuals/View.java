@@ -26,22 +26,24 @@ import javax.swing.JTable;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableRowSorter;
 
-import StarSystem.StarSystem;
+import StarSystem.*;
 
 
 
 
 public class View extends JFrame implements WindowListener,ActionListener {
 
-	static List<StarSystem> listSystem = new ArrayList<StarSystem>();
-	static List<String> listGov = new ArrayList<String>();
+	private StarSystemContainer listSystem = new StarSystemContainer();
+	private List<String> listGov = new ArrayList<String>();
 	private List<JCheckBox> listGovCheckBox = new ArrayList<JCheckBox>();
 	private TableRowSorter<MainTableModel> mainTableSorter;
 	private TableRowSorter<SupplyTableModel> supplyTableSorter;
 	
 	public View()
 	{
+		LoadMapFile();
 		LoadPlayerFile();
+
 		int winX = 960;
 		int winY = 720;
 		Dimension dimWindow = new Dimension(winX,winY);
@@ -55,20 +57,20 @@ public class View extends JFrame implements WindowListener,ActionListener {
 		JTabbedPane tabbedPane = new JTabbedPane();
 		this.add(tabbedPane);
 
-		JTable mainTable = new JTable(new MainTableModel(null));
+		JTable mainTable = new JTable(new MainTableModel(listSystem,listGovCheckBox,listGov));
 		mainTableSorter = new TableRowSorter<MainTableModel>((MainTableModel) mainTable.getModel());
 		
 		mainTable.setPreferredScrollableViewportSize(dimWindow);
 		mainTable.setFillsViewportHeight(true);
 		//mainTable.setAutoCreateRowSorter(true);
 		mainTable.setRowSorter(mainTableSorter);
-		JTable supplyTable = new JTable(new SupplyTableModel(null));
+		JTable supplyTable = new JTable(new SupplyTableModel(listSystem,listGovCheckBox));
 		supplyTableSorter = new TableRowSorter<SupplyTableModel>((SupplyTableModel) supplyTable.getModel());
 		
 		supplyTable.setPreferredScrollableViewportSize(dimWindow);
 		supplyTable.setFillsViewportHeight(true);
 		//mainTable.setAutoCreateRowSorter(true);
-		supplyTable.setRowSorter(mainTableSorter);
+		supplyTable.setRowSorter(supplyTableSorter);
 
 		JPanel pnlGovCheckBox = new JPanel();
 		pnlGovCheckBox.setLayout(new GridLayout(4,0));
@@ -88,11 +90,11 @@ public class View extends JFrame implements WindowListener,ActionListener {
 		        "All Entries, filtered by Governments tab");
 		tabbedPane.addTab("Supply", null, new JScrollPane(supplyTable),
 		        "All Entries, filtered by Governments tab");
-		
+
 		setVisible(true);
 	}
 	
-	public static void LoadMapFile()
+	protected void LoadMapFile()
 	{
 		try {
 			File dir = new File(".");
@@ -135,8 +137,8 @@ public class View extends JFrame implements WindowListener,ActionListener {
 					line.trim();
 					String gov = line.substring(12).replace("\"", "");
 
-					if(!listGov.contains(gov))
-						listGov.add(gov);
+					if(!this.listGov.contains(gov))
+						this.listGov.add(gov);
 				    CurrentSystem.setGovernment(listGov.indexOf(gov));
 
 				}
@@ -144,7 +146,7 @@ public class View extends JFrame implements WindowListener,ActionListener {
 				{
 					SysFound = true;
 					CurrentSystem = new StarSystem(line.substring(7).replace("\"", ""));
-					listSystem.add(CurrentSystem);
+					this.listSystem.add(CurrentSystem);
 				}
 			}
 
@@ -156,19 +158,19 @@ public class View extends JFrame implements WindowListener,ActionListener {
 			System.out.println(e.getMessage());
 			System.exit(0);
 		}
-		int unhab = listGov.indexOf("Uninhabited");
-		int top = listSystem.size();
+		int unhab = this.listGov.indexOf("Uninhabited");
+		int top = this.listSystem.size();
 		for(int i = 0; i < top;i++)
 		{
-			if(listSystem.get(i).getGovernment() == unhab)
+			if(this.listSystem.get(i).getGovernment() == unhab)
 			{
-				listSystem.remove(i);
+				this.listSystem.remove(i);
 				i--;
 				top--;
 			}
 		}
 	}
-	public static void LoadPlayerFile()
+	protected void LoadPlayerFile()
 	{
 		try {
 			File dir = new File(".");
@@ -194,7 +196,7 @@ public class View extends JFrame implements WindowListener,ActionListener {
 					    list.add(m.group(1).replace("\"", "")); // Add .replace("\"", "") to remove surrounding quotes.
 					
 					String sysName = list.get(1);
-					for(StarSystem s:View.listSystem)
+					for(StarSystem s: this.listSystem)
 						if(s.getName().equals(sysName))
 							s.setVisited(true);
 				}
@@ -216,7 +218,7 @@ public class View extends JFrame implements WindowListener,ActionListener {
 					while (m.find())
 					    list.add(m.group(1).replace("\"", "")); // Add .replace("\"", "") to remove surrounding quotes.
 					
-					System.out.printf("economy %s\n",list.get(0).trim());
+					//System.out.printf("economy %s\n",list.get(0).trim());
 					if(line.startsWith("\tsystem"))
 					{
 						
@@ -231,9 +233,9 @@ public class View extends JFrame implements WindowListener,ActionListener {
 					}
 					else
 					{
-						System.out.printf("Cost %s\n",list);
+						//System.out.printf("Cost %s\n",list);
 						String sysName = list.get(0).trim().replace("\"", "");
-						for(StarSystem s :View.listSystem)
+						for(StarSystem s :this.listSystem)
 							if(s.getName().equals(sysName))
 							{
 								for(int i = 1; i < list.size(); i++)
@@ -258,9 +260,10 @@ public class View extends JFrame implements WindowListener,ActionListener {
 
 
 	public static void main(String[] args) {
-		LoadMapFile();
+
 		new View();
 	}
+	
 	@Override public void actionPerformed(ActionEvent arg0) 
 	{	
 	}
@@ -268,13 +271,14 @@ public class View extends JFrame implements WindowListener,ActionListener {
 		
 	class MainTableModel extends AbstractTableModel {
 		
-
-		List<JCheckBox> boxes;
-		
-		public MainTableModel(List<JCheckBox> boxes)
+		private StarSystemContainer listSystem;
+		private List<JCheckBox> boxes;
+		private List<String> govs;
+		public MainTableModel(StarSystemContainer listOfSystems, List<JCheckBox> boxes, List<String> govs)
 		{
-
+			this.listSystem = listOfSystems;
 			this.boxes = boxes;
+			this.govs = govs;
 		}
 
         public int getColumnCount() {
@@ -282,7 +286,7 @@ public class View extends JFrame implements WindowListener,ActionListener {
         }
  
         public int getRowCount() {
-            return View.listSystem.size();
+            return this.listSystem.size();
         }
  
         public String getColumnName(int col) {
@@ -299,10 +303,10 @@ public class View extends JFrame implements WindowListener,ActionListener {
 
             switch(col)
             {
-	            case 0: return View.listSystem.get(row).getName();
-	            case 1: return View.listGov.get(View.listSystem.get(row).getGovernment());
-	            case 2: return View.listSystem.get(row).wasVisited();
-	            default:return View.listSystem.get(row).getCost(col-3);
+	            case 0: return this.listSystem.get(row).getName();
+	            case 1: return this.govs.get(this.listSystem.get(row).getGovernment());
+	            case 2: return this.listSystem.get(row).wasVisited();
+	            default:return this.listSystem.get(row).getCost(col-3);
             }
 
         }
@@ -314,12 +318,12 @@ public class View extends JFrame implements WindowListener,ActionListener {
 	}
 	class SupplyTableModel extends AbstractTableModel {
 		
-
+		private StarSystemContainer listSystem;
 		List<JCheckBox> boxes;
 		
-		public SupplyTableModel(List<JCheckBox> boxes)
+		public SupplyTableModel( StarSystemContainer listSystem,List<JCheckBox> boxes)
 		{
-
+			this.listSystem = listSystem;
 			this.boxes = boxes;
 		}
 
@@ -328,7 +332,7 @@ public class View extends JFrame implements WindowListener,ActionListener {
         }
  
         public int getRowCount() {
-            return View.listSystem.size();
+            return this.listSystem.size();
         }
  
         public String getColumnName(int col) {
@@ -344,8 +348,8 @@ public class View extends JFrame implements WindowListener,ActionListener {
 
             switch(col)
             {
-	            case 0: return View.listSystem.get(row).getName();
-	            default:return View.listSystem.get(row).getSupply(col-1);
+	            case 0: return this.listSystem.get(row).getName();
+	            default:return this.listSystem.get(row).getSupply(col-1);
             }
 
         }
