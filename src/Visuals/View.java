@@ -1,9 +1,14 @@
 package Visuals;
 
+import java.awt.Choice;
 import java.awt.Dimension;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.BufferedReader;
@@ -17,12 +22,14 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
+import javax.swing.JTextField;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableRowSorter;
 
@@ -39,15 +46,23 @@ public class View extends JFrame implements WindowListener,ActionListener {
 	private TableRowSorter<MainTableModel> mainTableSorter;
 	private TableRowSorter<SupplyTableModel> supplyTableSorter;
 	
+	JPanel pnlMainInput = new JPanel();
+	JPanel pnlRoutes = new JPanel();
+	
 	public View()
 	{
 		LoadMapFile();
 		LoadPlayerFile();
 
-		int winX = 960;
+		int winX = 1280;
 		int winY = 720;
 		Dimension dimWindow = new Dimension(winX,winY);
-	    
+		Dimension dimMainInput = new Dimension(160,winY-10);
+		Dimension dimRoutes = new Dimension(winX-(160)-40,winY-60);
+
+		JPanel pnlMain = new JPanel();
+		pnlMain.add(pnlMainInput);
+		pnlMain.add(pnlRoutes);
 		
 		//Window Configuration
 		addWindowListener(this);
@@ -57,6 +72,68 @@ public class View extends JFrame implements WindowListener,ActionListener {
 		JTabbedPane tabbedPane = new JTabbedPane();
 		this.add(tabbedPane);
 
+		
+		//GridBag seems to be the best for 
+		GridBagConstraints gbc=new GridBagConstraints();
+		pnlMain.setLayout(new GridBagLayout());
+
+		
+		JButton btnCalculate = new JButton("Calculate");
+		btnCalculate.setName("btnCalculate");
+	
+		pnlMainInput.add(btnCalculate);
+		
+		resizeJPanel(pnlMainInput, dimMainInput);
+		resizeJPanel(pnlRoutes, new Dimension((int)(dimRoutes.getWidth()-60),(int)dimRoutes.getHeight()));
+		
+		pnlRoutes.add(newRoutePanel());
+		pnlRoutes.add(newRoutePanel());
+		pnlRoutes.add(newRoutePanel());
+		pnlRoutes.add(newRoutePanel());
+		pnlRoutes.add(newRoutePanel());
+		pnlRoutes.add(newRoutePanel());
+		pnlRoutes.add(newRoutePanel());
+		pnlRoutes.add(newRoutePanel());
+		pnlRoutes.add(newRoutePanel());
+		pnlRoutes.add(newRoutePanel());
+		pnlRoutes.add(newRoutePanel());
+		pnlRoutes.add(newRoutePanel());
+		pnlRoutes.add(newRoutePanel());
+		pnlRoutes.add(newRoutePanel());
+		pnlRoutes.add(newRoutePanel());
+		pnlRoutes.add(newRoutePanel());
+		pnlRoutes.add(newRoutePanel());
+		pnlRoutes.add(newRoutePanel());
+		pnlRoutes.add(newRoutePanel());
+		pnlRoutes.add(newRoutePanel());
+		pnlRoutes.add(newRoutePanel());
+		pnlRoutes.add(newRoutePanel());
+		
+		pnlRoutes.setLayout(new GridLayout(0,1));
+
+        //Add the tabbed pane to this panel.
+		gbc.fill = GridBagConstraints.HORIZONTAL;
+		gbc.gridx = 0;
+		gbc.gridy = 0;
+		gbc.gridwidth = 1;
+		gbc.gridheight = 1;
+		pnlMain.add(pnlMainInput,gbc);
+        //Add the tabbed pane to this panel.
+        
+        JScrollPane spnlRoutes = new JScrollPane(pnlRoutes);
+        spnlRoutes.setPreferredSize(dimRoutes);
+        spnlRoutes.setMinimumSize(dimRoutes);
+		gbc.fill = GridBagConstraints.HORIZONTAL;
+		gbc.gridx = 1;
+		gbc.gridy = 0;
+		gbc.gridwidth = 3;
+		gbc.gridheight = 1;
+        pnlMain.add(spnlRoutes,gbc);
+
+		
+		
+		
+		
 		JTable mainTable = new JTable(new MainTableModel(listSystem,listGovCheckBox,listGov));
 		mainTableSorter = new TableRowSorter<MainTableModel>((MainTableModel) mainTable.getModel());
 		
@@ -83,15 +160,63 @@ public class View extends JFrame implements WindowListener,ActionListener {
 			listGovCheckBox.add(myJCB);
 			
 		}
-		
+		tabbedPane.addTab("Cargo Selection", null, pnlMain,
+		        "All Entries, filtered by Governments tab");		
 		tabbedPane.addTab("Main Table", null, new JScrollPane(mainTable),
 		        "All Entries, filtered by Governments tab");
 		tabbedPane.addTab("Governments", null, new JScrollPane(pnlGovCheckBox),
 		        "All Entries, filtered by Governments tab");
 		tabbedPane.addTab("Supply", null, new JScrollPane(supplyTable),
 		        "All Entries, filtered by Governments tab");
-
 		setVisible(true);
+	}
+	protected JPanel newRoutePanel()
+	{
+		ItemListener il = 	new ItemListener() {
+
+			@Override
+			public void itemStateChanged(ItemEvent arg0) {
+				JPanel pnl = (JPanel) ((Choice) arg0.getSource()).getParent();
+				Choice Sys = (Choice) pnl.getComponent(0);
+				Choice Cargo = (Choice) pnl.getComponent(1);
+				JTextField tf = (JTextField) pnl.getComponent(2);
+				tf.setText(listSystem.get(Sys.getSelectedIndex()).getCost(Cargo.getSelectedIndex())+"");;
+				
+			}};
+		
+		JPanel pnl = new JPanel();
+		
+		int h = (int)pnlRoutes.getSize().getHeight();
+		
+		System.out.println(h);
+		System.out.println(pnlRoutes.getComponentCount());
+		if(h/30 < pnlRoutes.getComponentCount())
+		{
+			
+			resizeJPanel(pnlRoutes, new Dimension(pnlRoutes.getWidth(), 35*pnlRoutes.getComponentCount()));
+		}
+		Choice Sys = new Choice();
+		pnl.add(Sys);
+		Choice Cargo = new Choice();
+				pnl.add(Cargo);
+		for(StarSystem s :listSystem)
+			Sys.add(s.getName());
+		for(String s :StarSystem.CommoditiesList)
+			Cargo.add(s);
+		JTextField tfCost = new JTextField(listSystem.get(Sys.getSelectedIndex()).getCost(Cargo.getSelectedIndex())+"",10);
+		pnl.add(tfCost);
+		Sys.addItemListener(il);
+		Cargo.addItemListener(il);
+		
+		return pnl;
+	}
+	
+	protected void resizeJPanel(JPanel panel, Dimension dim)
+	{
+		panel.setSize(dim);
+		panel.setMinimumSize(dim);
+		panel.setMaximumSize(dim);
+		panel.setPreferredSize(dim);
 	}
 	
 	protected void LoadMapFile()
@@ -317,7 +442,7 @@ public class View extends JFrame implements WindowListener,ActionListener {
         }
 	}
 	class SupplyTableModel extends AbstractTableModel {
-		
+
 		private StarSystemContainer listSystem;
 		List<JCheckBox> boxes;
 		
